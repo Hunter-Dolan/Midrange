@@ -1,6 +1,9 @@
 package frame
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
 
 // Frame is the base structure for a transaction frame
 type Frame struct {
@@ -17,6 +20,8 @@ type GenerationOptions struct {
 	SampleRate    int64
 	Spacing       int
 	BaseFrequency int
+
+	NoiseLevel int
 }
 
 // NewFrame creates a new frame
@@ -28,16 +33,30 @@ func NewFrame(data ...int) *Frame {
 	return &frame
 }
 
-// NewHeaderFrame creates a header frame
-func NewHeaderFrame(options *GenerationOptions) *Frame {
-	data := make([]int, options.CarrierCount)
-	data[0] = 1
-	data[options.CarrierCount-1] = 1
+// NewHeaderFrames creates the header frames
+func NewHeaderFrames(options *GenerationOptions) []*Frame {
 
-	header := NewFrame(data...)
-	header.SignalFrequency = 300
+	evenData := make([]int, options.CarrierCount)
+	oddData := make([]int, options.CarrierCount)
 
-	return header
+	for i := 0; i < options.CarrierCount; i++ {
+		even := i%2 == 0
+		if even {
+			evenData[i] = 1
+			oddData[i] = 0
+		} else {
+			evenData[i] = 0
+			oddData[i] = 1
+		}
+	}
+
+	evenFrame := NewFrame(evenData...)
+	evenFrame.SignalFrequency = 300
+
+	oddFrame := NewFrame(oddData...)
+	oddFrame.SignalFrequency = 300
+
+	return []*Frame{evenFrame, oddFrame}
 }
 
 func (f Frame) carriers(options *GenerationOptions) []float64 {
@@ -80,7 +99,17 @@ func (f *Frame) Generate(options *GenerationOptions, startIndex int64) int64 {
 
 		amplitude = (amplitude / float64(carrierCount))
 
-		f.Wave = append(f.Wave, amplitude*32767.0) //+(rand.Float64()*5000.0))
+		noise := float64(0)
+		scaler := float64(32767.0)
+
+		if options.NoiseLevel != 0 {
+			noiseAmplitude := (scaler / float64(100.0)) * float64(options.NoiseLevel)
+
+			scaler = scaler - noiseAmplitude
+			noise = noiseAmplitude * rand.Float64()
+		}
+
+		f.Wave = append(f.Wave, amplitude*scaler+noise)
 
 	}
 

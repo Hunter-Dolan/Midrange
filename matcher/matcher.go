@@ -1,16 +1,19 @@
 package matcher
 
 import (
-	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/Hunter-Dolan/midrange/frame"
 	"github.com/mjibson/go-dsp/spectral"
 )
 
+var carrierActive []float64
+var carrierResting []float64
+
 // FindProbableMatch returns the most likely match for a wave
-func (b *Matcher) findProbableMatch(wave []float64) *frame.Frame {
+func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame {
 
 	frame := &frame.Frame{}
 
@@ -42,51 +45,41 @@ func (b *Matcher) findProbableMatch(wave []float64) *frame.Frame {
 
 	locatedCarrierValues := make([]float64, numberOfCarriers)
 
-	localSamples := 2
-
 	for i, frequency := range frequencies {
 
 		if frequency < maximumCarrierAdjusted && frequency > minimumCarrierAdjusted {
+
 			distance := math.Abs(frequency - float64(searchingCarrier))
 
+			headerPacket := frameIndex <= 1
+			power := powers[i-1]
+
 			if minimumDistance < distance && minimumDistance != float64(-1) {
-				step := 1
-				powerLeftEnd := i - 1 - ((localSamples / 2) * step)
 
-				midPower := powers[i-1]
-				midHighest := true
-				powerSum := float64(0)
+				if headerPacket {
+					evenFrame := frameIndex%2 == 0
+					evenCarrier := carriersFound%2 == 0
 
-				for localIndex := 0; localIndex < localSamples+1; localIndex++ {
-					powerIndex := powerLeftEnd + (step * localIndex)
-					power := powers[powerIndex]
+					if evenFrame && evenCarrier || !evenFrame && !evenCarrier {
+						carrierActive[carriersFound] = power
+					} else {
+						carrierResting[carriersFound] = power
+					}
+				} else {
+					activeCarrierDistance := math.Abs(carrierActive[carriersFound] - power)
+					restingCarrierDistance := math.Abs(carrierResting[carriersFound] - power)
 
-					if powerIndex != (i - 1) {
-						powerSum += power
+					value := 1
+
+					if activeCarrierDistance > restingCarrierDistance {
+						value = 0
 					}
 
-					if power > midPower {
-						midHighest = false
-					}
+					frame.Data = append(frame.Data, value)
 				}
-
-				powerAvg := powerSum / float64(localSamples)
-
-				aboveAverage := false
-
-				if (midPower/powerAvg)*100 > 50 {
-					aboveAverage = true
-				}
-
-				value := 0
-
-				if midHighest && aboveAverage {
-					value = 1
-				}
-
-				frame.Data = append(frame.Data, value)
 
 				locatedCarrierValues[carriersFound] = powers[i-1]
+
 				carriersFound++
 				if carriersFound < numberOfCarriers {
 					searchingCarrier = carriers[carriersFound]
@@ -101,7 +94,9 @@ func (b *Matcher) findProbableMatch(wave []float64) *frame.Frame {
 		}
 	}
 
-	fmt.Println(frame.Data)
+	//fmt.Println(frame.Data)
+
+	//ioutil.WriteFile("data.csv", []byte(csvData), 0644)
 
 	return frame
 }
@@ -116,12 +111,18 @@ func (b *Matcher) match(wave []float64) []*frame.Frame {
 
 	numberOfFrames := waveLength / frameLength
 
+	carrierActive = make([]float64, options.CarrierCount)
+	carrierResting = make([]float64, options.CarrierCount)
+
 	for i := int64(0); i < numberOfFrames; i++ {
 		offset := i * frameLength
 		frameWave := wave[offset : offset+frameLength]
-		frame := b.findProbableMatch(frameWave)
 
-		if len(frames) == 0 {
+		frameIndex := len(frames)
+
+		frame := b.findProbableMatch(frameWave, frameIndex)
+
+		if frameIndex < 1 {
 			frame.HeaderPacket = true
 		}
 
@@ -181,6 +182,6 @@ func (b *Matcher) Decode(wave []float64) string {
 
 		return buffer.String()*/
 
-	return string(byteArray[:])
+	return strings.TrimSpace(string(byteArray[:]))
 
 }

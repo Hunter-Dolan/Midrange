@@ -18,14 +18,17 @@ type Transaction struct {
 	Carriers      int
 	Kilobitrate   int
 	Bandwidth     int
+
+	// Debug
+	NoiseLevel int
 }
 
 // NewTransaction creates a new transaction
 func NewTransaction() *Transaction {
 	t := Transaction{}
-	t.BaseFrequency = 10000
+	t.BaseFrequency = 50000
 	t.FrameDuration = 500
-	t.Carriers = 64
+	t.Carriers = 128
 	t.Kilobitrate = 96 * 2
 	t.Bandwidth = 1000
 
@@ -84,9 +87,8 @@ func (t *Transaction) SetData(s string) {
 }
 
 func (t *Transaction) buildHeader() {
-	header := frame.NewHeaderFrame(t.FrameGenerationOptions())
-
-	t.Frames = append([]*frame.Frame{header}, t.Frames...)
+	headers := frame.NewHeaderFrames(t.FrameGenerationOptions())
+	t.Frames = append(headers, t.Frames...)
 }
 
 func (t Transaction) FrameGenerationOptions() *frame.GenerationOptions {
@@ -98,6 +100,7 @@ func (t Transaction) FrameGenerationOptions() *frame.GenerationOptions {
 	frameOptions.SampleRate = int64(t.Kilobitrate * 1000)
 	frameOptions.Spacing = spacing
 	frameOptions.CarrierCount = t.Carriers
+	frameOptions.NoiseLevel = t.NoiseLevel
 
 	return &frameOptions
 }
