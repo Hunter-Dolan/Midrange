@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -11,6 +12,9 @@ import (
 
 var carrierActive []float64
 var carrierResting []float64
+
+var carrierActiveAvg float64
+var carrierRestingAvg float64
 
 // FindProbableMatch returns the most likely match for a wave
 func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame {
@@ -66,8 +70,12 @@ func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame
 						carrierResting[carriersFound] = power
 					}
 				} else {
-					activeCarrierDistance := math.Abs(carrierActive[carriersFound] - power)
-					restingCarrierDistance := math.Abs(carrierResting[carriersFound] - power)
+					activeCarrierDistance := math.Abs(carrierActiveAvg - power)
+					restingCarrierDistance := math.Abs(carrierRestingAvg - power)
+
+					//  10000 2000 0
+					//
+					//
 
 					value := 1
 
@@ -122,8 +130,27 @@ func (b *Matcher) match(wave []float64) []*frame.Frame {
 
 		frame := b.findProbableMatch(frameWave, frameIndex)
 
-		if frameIndex < 1 {
+		if frameIndex <= 1 {
 			frame.HeaderPacket = true
+
+			if frameIndex == 1 {
+
+				carrierActiveAvg = float64(0)
+				carrierRestingAvg = float64(0)
+
+				for i, active := range carrierActive {
+					resting := carrierResting[i]
+
+					carrierActiveAvg += active
+					carrierRestingAvg += resting
+				}
+
+				carrierActiveAvg = carrierActiveAvg / float64(len(carrierActive))
+				carrierRestingAvg = carrierRestingAvg / float64(len(carrierResting))
+
+				fmt.Println(carrierActiveAvg, carrierRestingAvg)
+			}
+
 		}
 
 		frames = append(frames, frame)

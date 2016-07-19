@@ -23,12 +23,12 @@ func main() {
 
 	transaction := transaction.NewTransaction()
 
-	transaction.BaseFrequency = 5000
-	transaction.FrameDuration = 500
-	transaction.Carriers = 128
-	transaction.Kilobitrate = 96 * 2
+	transaction.BaseFrequency = 1000
+	transaction.FrameDuration = 1000
+	transaction.Carriers = 32
+	transaction.Kilobitrate = 96
 	transaction.Bandwidth = 1000
-	transaction.NoiseLevel = 0
+	transaction.NoiseLevel = 80
 
 	s := "Everyone is talking about the car, I'm much more impressed by how sturdy that bike is."
 

@@ -86,6 +86,8 @@ func (f *Frame) Generate(options *GenerationOptions, startIndex int64) int64 {
 
 	ts := 1 / float64(options.SampleRate)
 
+	f.Wave = make([]float64, numSamples)
+
 	for i := int64(0); i < numSamples; i++ {
 
 		amplitude := float64(0)
@@ -109,7 +111,7 @@ func (f *Frame) Generate(options *GenerationOptions, startIndex int64) int64 {
 			noise = noiseAmplitude * rand.Float64()
 		}
 
-		f.Wave = append(f.Wave, amplitude*scaler+noise)
+		f.Wave[i] = amplitude*scaler + noise
 
 	}
 

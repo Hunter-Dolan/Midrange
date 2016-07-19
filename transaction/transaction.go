@@ -78,6 +78,8 @@ func (t *Transaction) SetData(s string) {
 		frameData = append(frameData, int(bit)-48)
 
 		if frameIndex == (t.Carriers-1) || i == (binLength-1) {
+			fmt.Println(frameData)
+
 			f := frame.NewFrame(frameData...)
 			t.AddFrame(f)
 			frameData = []int{}
@@ -123,6 +125,8 @@ func (t *Transaction) Wave() []float64 {
 		waveIndex = frame.Generate(frameOptions, waveIndex)
 		wave = append(wave, frame.Wave...)
 	}
+
+	fmt.Println(numFrames, "Frames")
 
 	return wave
 }
