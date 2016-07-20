@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/Hunter-Dolan/midrange/matcher"
@@ -23,14 +22,15 @@ func main() {
 
 	transaction := transaction.NewTransaction()
 
-	transaction.BaseFrequency = 1000
-	transaction.FrameDuration = 1000
-	transaction.Carriers = 32
+	transaction.BaseFrequency = 10000
+	transaction.FrameDuration = 500
+	transaction.Carriers = 64
 	transaction.Kilobitrate = 96
 	transaction.Bandwidth = 1000
-	transaction.NoiseLevel = 80
+	transaction.NoiseLevel = 0
+	transaction.KeyStates = 2
 
-	s := "Everyone is talking about the car, I'm much more impressed by how sturdy that bike is."
+	s := "Hello this is a test, that is a bit longer than the other tests"
 
 	transaction.SetData(s)
 
@@ -53,5 +53,25 @@ func process(transaction *transaction.Transaction, s string) {
 
 	fmt.Println(result)
 
-	fmt.Println(strings.Contains(result, s))
+	percentMatch(s, result)
+}
+
+func percentMatch(first string, second string) {
+
+	total := float64(len(first))
+	matched := float64(0)
+
+	for i := range first {
+		firstChar := first[i]
+		secondChar := second[i]
+
+		if firstChar == secondChar {
+			matched++
+			fmt.Print(" ")
+		} else {
+			fmt.Print("^")
+		}
+	}
+
+	fmt.Println("     |", matched/total*100, "%|")
 }

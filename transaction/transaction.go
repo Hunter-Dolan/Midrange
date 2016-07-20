@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 
 	"github.com/Hunter-Dolan/midrange/frame"
@@ -18,6 +19,7 @@ type Transaction struct {
 	Carriers      int
 	Kilobitrate   int
 	Bandwidth     int
+	KeyStates     int
 
 	// Debug
 	NoiseLevel int
@@ -31,6 +33,7 @@ func NewTransaction() *Transaction {
 	t.Carriers = 128
 	t.Kilobitrate = 96 * 2
 	t.Bandwidth = 1000
+	t.KeyStates = 2
 
 	return &t
 }
@@ -60,29 +63,32 @@ func stringToBin(s string) string {
 
 // SetData sets the data for the transaction
 func (t *Transaction) SetData(s string) {
-	/*
-		var b bytes.Buffer
-		w := gzip.NewWriter(&b)
-		w.Write([]byte(s))
-		w.Close()
-
-		s = b.String()
-	*/
 	bin := stringToBin(s)
 	binLength := len(bin)
 
+	frameLength := (t.Carriers - 2) * (t.KeyStates / 2)
+
 	frameData := []int{}
 
-	for i, bit := range bin {
-		frameIndex := i % t.Carriers
-		frameData = append(frameData, int(bit)-48)
+	frameSum := 0
 
-		if frameIndex == (t.Carriers-1) || i == (binLength-1) {
-			fmt.Println(frameData)
+	for i, binaryBit := range bin {
+		bit := int(binaryBit) - 48
+		frameData = append(frameData, bit)
+		dataLength := len(frameData)
+
+		frameSum += bit
+
+		if frameLength == dataLength || i == (binLength-1) {
+			byteLength := len(frameData) / 8
+			byteOffset := len(t.Frames) * byteLength
+
+			fmt.Println(frameData, s[byteOffset:byteLength+byteOffset], frameSum, len(frameData))
 
 			f := frame.NewFrame(frameData...)
 			t.AddFrame(f)
 			frameData = []int{}
+			frameSum = 0
 		}
 	}
 
@@ -103,6 +109,7 @@ func (t Transaction) FrameGenerationOptions() *frame.GenerationOptions {
 	frameOptions.Spacing = spacing
 	frameOptions.CarrierCount = t.Carriers
 	frameOptions.NoiseLevel = t.NoiseLevel
+	frameOptions.KeyStates = t.KeyStates
 
 	return &frameOptions
 }
@@ -112,7 +119,9 @@ func (t *Transaction) Wave() []float64 {
 
 	wave := []float64{}
 
-	fmt.Println(float64(t.Carriers)*(1000.0/float64(t.FrameDuration)), "Bits/second")
+	bitsPerCarrier := float64(math.Log2(float64(t.KeyStates)))
+
+	fmt.Println(float64(t.Carriers)*(1000.0/float64(t.FrameDuration))*bitsPerCarrier, "Bits/second")
 
 	numFrames := len(t.Frames)
 
