@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"os"
 
 	"github.com/Hunter-Dolan/midrange/frame"
@@ -19,7 +18,6 @@ type Transaction struct {
 	Carriers      int
 	Kilobitrate   int
 	Bandwidth     int
-	KeyStates     int
 
 	// Debug
 	NoiseLevel int
@@ -33,7 +31,6 @@ func NewTransaction() *Transaction {
 	t.Carriers = 128
 	t.Kilobitrate = 96 * 2
 	t.Bandwidth = 1000
-	t.KeyStates = 2
 
 	return &t
 }
@@ -66,24 +63,21 @@ func (t *Transaction) SetData(s string) {
 	bin := stringToBin(s)
 	binLength := len(bin)
 
-	frameLength := (t.Carriers - 2) * (t.KeyStates / 2)
-
 	frameData := []int{}
 
 	frameSum := 0
 
 	for i, binaryBit := range bin {
+		carrierIndex := i % t.Carriers
 		bit := int(binaryBit) - 48
 		frameData = append(frameData, bit)
-		dataLength := len(frameData)
-
 		frameSum += bit
 
-		if frameLength == dataLength || i == (binLength-1) {
+		if carrierIndex == (t.Carriers-1) || i == (binLength-1) {
 			byteLength := len(frameData) / 8
 			byteOffset := len(t.Frames) * byteLength
 
-			fmt.Println(frameData, s[byteOffset:byteLength+byteOffset], frameSum, len(frameData))
+			fmt.Println(frameData, s[byteOffset:byteLength+byteOffset], frameSum)
 
 			f := frame.NewFrame(frameData...)
 			t.AddFrame(f)
@@ -109,7 +103,6 @@ func (t Transaction) FrameGenerationOptions() *frame.GenerationOptions {
 	frameOptions.Spacing = spacing
 	frameOptions.CarrierCount = t.Carriers
 	frameOptions.NoiseLevel = t.NoiseLevel
-	frameOptions.KeyStates = t.KeyStates
 
 	return &frameOptions
 }
@@ -119,9 +112,7 @@ func (t *Transaction) Wave() []float64 {
 
 	wave := []float64{}
 
-	bitsPerCarrier := float64(math.Log2(float64(t.KeyStates)))
-
-	fmt.Println(float64(t.Carriers)*(1000.0/float64(t.FrameDuration))*bitsPerCarrier, "Bits/second")
+	fmt.Println(float64(t.Carriers)*(1000.0/float64(t.FrameDuration)), "Bits/second")
 
 	numFrames := len(t.Frames)
 

@@ -10,13 +10,11 @@ import (
 	"github.com/mjibson/go-dsp/spectral"
 )
 
-/*
 var carrierActive []float64
 var carrierResting []float64
 
-var carrierStates []float64
-var stateValues [][]int
-*/
+var carrierActiveAvg float64
+var carrierRestingAvg float64
 
 // FindProbableMatch returns the most likely match for a wave
 func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame {
@@ -53,12 +51,6 @@ func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame
 
 	locatedCarrierValues := make([]float64, numberOfCarriers)
 
-	carrierActive := 0.0
-	carrierResting := 0.0
-
-	carrierStates := make([]float64, b.options.KeyStates)
-	stateValues := make([][]int, b.options.KeyStates)
-
 	for i, frequency := range frequencies {
 
 		if frequency < maximumCarrierAdjusted && frequency > minimumCarrierAdjusted {
@@ -71,83 +63,25 @@ func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame
 			if minimumDistance < distance && minimumDistance != float64(-1) {
 
 				if headerPacket {
-					/*					evenFrame := frameIndex%2 == 0
-										evenCarrier := carriersFound%2 == 0
+					evenFrame := frameIndex%2 == 0
+					evenCarrier := carriersFound%2 == 0
 
-										if evenFrame && evenCarrier || !evenFrame && !evenCarrier {
-											carrierActive[carriersFound] = power
-										} else {
-											carrierResting[carriersFound] = power
-										}
-					*/
+					if evenFrame && evenCarrier || !evenFrame && !evenCarrier {
+						carrierActive[carriersFound] = power
+					} else {
+						carrierResting[carriersFound] = power
+					}
 				} else {
+					activeCarrierDistance := math.Abs(carrierActiveAvg - power)
+					restingCarrierDistance := math.Abs(carrierRestingAvg - power)
 
-					if carriersFound == 0 {
-						carrierActive = power
+					value := 1
+
+					if activeCarrierDistance/2 > restingCarrierDistance {
+						value = 0
 					}
 
-					if carriersFound == 1 {
-						carrierResting = power
-
-						difference := carrierActive - carrierResting
-
-						keyStates := b.options.KeyStates
-
-						bitsPerCarrier := int(math.Log2(float64(b.options.KeyStates)))
-
-						for state := 0; state < keyStates; state++ {
-							percent := float64(state) / float64(keyStates-1)
-							carrierStates[state] = carrierResting + (difference * percent)
-
-							stateBitsString := fmt.Sprintf("%b", state)
-							stateBitsStringLength := len(stateBitsString)
-
-							stateBits := make([]int, bitsPerCarrier)
-
-							for i := range stateBits {
-								leftPad := bitsPerCarrier - stateBitsStringLength
-
-								if i < leftPad {
-									stateBits[i] = 0
-								} else {
-									stateBits[i] = int(stateBitsString[i-leftPad]) - 48
-								}
-							}
-
-							stateValues[state] = stateBits
-						}
-					}
-
-					if carriersFound > 1 {
-
-						lowestDistance := -1.0
-						closestState := -1
-
-						for state, amp := range carrierStates {
-							distance := math.Abs(amp - power)
-							if distance < lowestDistance || lowestDistance == -1 {
-								closestState = state
-								lowestDistance = distance
-							}
-						}
-
-						value := stateValues[closestState]
-						fmt.Println(carrierStates, power, value)
-
-						frame.Data = append(frame.Data, value...)
-					}
-					/*
-						activeCarrierDistance := math.Abs(carrierStates[1] - power)
-						restingCarrierDistance := math.Abs(carrierStates[0] - power)
-
-						value := 1
-
-						if activeCarrierDistance/2 > restingCarrierDistance {
-							value = 0
-						}
-
-						frame.Data = append(frame.Data, value)
-					*/
+					frame.Data = append(frame.Data, value)
 				}
 
 				locatedCarrierValues[carriersFound] = powers[i-1]
@@ -182,11 +116,9 @@ func (b *Matcher) match(wave []float64) []*frame.Frame {
 	frameLength := int64(float64(options.SampleRate) / float64(1000.0) * float64(options.Duration))
 
 	numberOfFrames := waveLength / frameLength
-	/*
 
-		carrierActive = make([]float64, options.CarrierCount)
-		carrierResting = make([]float64, options.CarrierCount)
-	*/
+	carrierActive = make([]float64, options.CarrierCount)
+	carrierResting = make([]float64, options.CarrierCount)
 
 	for i := int64(0); i < numberOfFrames; i++ {
 		offset := i * frameLength
@@ -200,56 +132,24 @@ func (b *Matcher) match(wave []float64) []*frame.Frame {
 			frame.HeaderPacket = true
 
 			if frameIndex == 1 {
-				/*
-					carrierActiveAvg := float64(0)
-					carrierRestingAvg := float64(0)
 
-					for i, active := range carrierActive {
-						resting := carrierResting[i]
+				carrierActiveAvg = float64(0)
+				carrierRestingAvg = float64(0)
 
-						carrierActiveAvg += active
-						carrierRestingAvg += resting
-					}
+				for i, active := range carrierActive {
+					resting := carrierResting[i]
 
-					carrierActiveAvg = carrierActiveAvg / float64(len(carrierActive))
-					carrierRestingAvg = carrierRestingAvg / float64(len(carrierResting))
+					carrierActiveAvg += active
+					carrierRestingAvg += resting
+				}
 
-					difference := carrierActiveAvg - carrierRestingAvg
+				carrierActiveAvg = carrierActiveAvg / float64(len(carrierActive))
+				carrierRestingAvg = carrierRestingAvg / float64(len(carrierResting))
 
-					keyStates := options.KeyStates
-
-					carrierStates = make([]float64, options.KeyStates)
-					stateValues = make([][]int, options.KeyStates)
-
-					bitsPerCarrier := int(math.Log2(float64(options.KeyStates)))
-
-					for state := 0; state < keyStates; state++ {
-						percent := float64(state) / float64(keyStates-1)
-						carrierStates[state] = carrierRestingAvg + (difference * percent)
-
-						stateBitsString := fmt.Sprintf("%b", state)
-						stateBitsStringLength := len(stateBitsString)
-
-						stateBits := make([]int, bitsPerCarrier)
-
-						for i := range stateBits {
-							leftPad := bitsPerCarrier - stateBitsStringLength
-
-							if i < leftPad {
-								stateBits[i] = 0
-							} else {
-								stateBits[i] = int(stateBitsString[i-leftPad]) - 48
-							}
-						}
-
-						stateValues[state] = stateBits
-					}
-				*/
+				fmt.Println(carrierActiveAvg, carrierRestingAvg)
 			}
 
 		}
-
-		fmt.Println(frame.Data)
 
 		frames = append(frames, frame)
 	}

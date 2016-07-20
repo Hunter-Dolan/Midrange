@@ -1,9 +1,9 @@
 package frame
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
-	"strconv"
 )
 
 // Frame is the base structure for a transaction frame
@@ -21,7 +21,6 @@ type GenerationOptions struct {
 	SampleRate    int64
 	Spacing       int
 	BaseFrequency int
-	KeyStates     int
 
 	NoiseLevel int
 }
@@ -53,67 +52,26 @@ func NewHeaderFrames(options *GenerationOptions) []*Frame {
 	}
 
 	evenFrame := NewFrame(evenData...)
-	evenFrame.HeaderPacket = true
+	evenFrame.SignalFrequency = 300
 
 	oddFrame := NewFrame(oddData...)
-	oddFrame.HeaderPacket = true
+	oddFrame.SignalFrequency = 300
 
 	return []*Frame{evenFrame, oddFrame}
 }
 
-func (f Frame) carriers(options *GenerationOptions) map[float64]int {
-	var carriers = map[float64]int{}
+func (f Frame) carriers(options *GenerationOptions) []float64 {
+	var carriers = []float64{}
 
-	var dataLen = len(f.Data)
+	if f.SignalFrequency != -1 {
+		carriers = append(carriers, float64(f.SignalFrequency))
+	}
 
-	bitsPerCarrier := int(math.Log2(float64(options.KeyStates)))
-
-	activeCarrierIndex := 0
-	inactiveCarrierIndex := 1
-
-	activeCarrier := float64(activeCarrierIndex*options.Spacing + options.BaseFrequency)
-	carriers[activeCarrier] = options.KeyStates - 1
-
-	inactiveCarrier := float64(inactiveCarrierIndex*options.Spacing + options.BaseFrequency)
-	carriers[inactiveCarrier] = 0
-
-	if f.HeaderPacket {
-		signalFrequency := 300.0
-		carriers[signalFrequency] = 1
-
-		for index, bit := range f.Data {
+	for index := range f.Data {
+		if f.Data[index] == 1 {
 			freq := float64(index*options.Spacing + options.BaseFrequency)
 
-			if bit == 1 {
-				carriers[freq] = options.KeyStates - 1
-			}
-		}
-
-	} else {
-		for index := 0; index < dataLen/bitsPerCarrier; index++ {
-
-			offset := index * bitsPerCarrier
-			rightEnd := offset + bitsPerCarrier
-
-			if rightEnd > dataLen {
-				rightEnd = dataLen - 1
-			}
-
-			segment := f.Data[offset:rightEnd]
-
-			stringValue := ""
-
-			for _, s := range segment {
-				stringValue += strconv.Itoa(s)
-			}
-
-			value, _ := strconv.ParseInt(stringValue, 2, 64)
-			intValue := int(value)
-
-			if intValue != 0 {
-				freq := float64((index+2)*options.Spacing + options.BaseFrequency)
-				carriers[freq] = intValue
-			}
+			carriers = append(carriers, freq)
 		}
 	}
 
@@ -131,16 +89,17 @@ func (f *Frame) Generate(options *GenerationOptions, startIndex int64) int64 {
 
 	f.Wave = make([]float64, numSamples)
 
+	fmt.Println(carriers)
+
 	for i := int64(0); i < numSamples; i++ {
 
 		amplitude := float64(0)
 
 		p := float64(float64(i+startIndex) * ts)
 
-		for freq, state := range carriers {
-			freqAmp := float64(float64(state) / float64(options.KeyStates-1))
-
-			amplitude += (math.Sin(p * freq * 2 * math.Pi)) * freqAmp
+		for carrierIndex := int64(0); carrierIndex < int64(carrierCount); carrierIndex++ {
+			freq := float64(carriers[carrierIndex])
+			amplitude += (math.Sin(p * freq * 2 * (math.Pi)))
 		}
 
 		amplitude = (amplitude / float64(carrierCount))

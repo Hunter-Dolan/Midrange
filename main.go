@@ -28,7 +28,6 @@ func main() {
 	transaction.Kilobitrate = 96
 	transaction.Bandwidth = 1000
 	transaction.NoiseLevel = 0
-	transaction.KeyStates = 2
 
 	s := "Hello this is a test, that is a bit longer than the other tests"
 
