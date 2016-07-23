@@ -21,23 +21,21 @@ func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame
 
 	frame := &frame.Frame{}
 
-	nfft := math.Log(float64(b.options.SampleRate * 1000))
-	nfft = math.Ceil(nfft / math.Log(2))
-
-	nfft = math.Pow(2, float64(b.options.NFFTPower))
+	nfft := math.Pow(2, float64(b.options.NFFTPower))
 
 	//topCandidate := b.frames[0]
 
 	// Perform Pwelch on wave
 	fs := float64(b.options.SampleRate)
 	opts := &spectral.PwelchOptions{
-		NFFT:      int(nfft),
-		Scale_off: false,
+		NFFT: int(nfft),
 	}
 
-	extendedWave := wave
+	guardOffset := int((float64(len(wave)) / 100.0) * 0.0)
 
-	powers, frequencies := spectral.Pwelch(extendedWave, fs, opts)
+	guardedWave := wave[guardOffset : len(wave)-1]
+
+	powers, frequencies := spectral.Pwelch(guardedWave, fs, opts)
 
 	carriers := b.options.Carriers()
 	numberOfCarriers := len(carriers)
@@ -72,8 +70,11 @@ func (b *Matcher) findProbableMatch(wave []float64, frameIndex int) *frame.Frame
 						carrierResting[carriersFound] = power
 					}
 				} else {
-					activeCarrierDistance := math.Abs(carrierActiveAvg - power)
-					restingCarrierDistance := math.Abs(carrierRestingAvg - power)
+					activePower := carrierActiveAvg // carrierActive[carriersFound]
+					inactivePower := carrierRestingAvg
+
+					activeCarrierDistance := math.Abs(activePower - power)
+					restingCarrierDistance := math.Abs(inactivePower - power)
 
 					value := 1
 
@@ -144,7 +145,7 @@ func (b *Matcher) match(wave []float64) []*frame.Frame {
 				}
 
 				carrierActiveAvg = carrierActiveAvg / float64(len(carrierActive))
-				carrierRestingAvg = carrierRestingAvg / float64(len(carrierResting))
+				carrierRestingAvg = carrierActiveAvg / 4 //carrierRestingAvg / float64(len(carrierResting))
 
 				fmt.Println(carrierActiveAvg, carrierRestingAvg)
 			}

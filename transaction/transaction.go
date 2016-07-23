@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 
 	"github.com/Hunter-Dolan/midrange/frame"
@@ -15,9 +16,15 @@ type Transaction struct {
 	Frames        []*frame.Frame
 	BaseFrequency int
 	FrameDuration int
-	Carriers      int
 	Kilobitrate   int
 	Bandwidth     int
+
+	OMFSKConstant float64
+
+	carrierCount   int
+	carrierSpacing float64
+
+	wave []float64
 
 	// Debug
 	NoiseLevel int
@@ -28,10 +35,9 @@ func NewTransaction() *Transaction {
 	t := Transaction{}
 	t.BaseFrequency = 50000
 	t.FrameDuration = 500
-	t.Carriers = 128
 	t.Kilobitrate = 96 * 2
 	t.Bandwidth = 1000
-
+	t.OMFSKConstant = 1.0
 	return &t
 }
 
@@ -58,8 +64,16 @@ func stringToBin(s string) string {
 	return binaryString
 }
 
+func (t *Transaction) determineCarrierCount() {
+	t.carrierSpacing = float64(t.OMFSKConstant) / (float64(t.FrameDuration) / 1000.0)
+	t.carrierCount = int(math.Floor(float64(t.Bandwidth) / t.carrierSpacing))
+}
+
 // SetData sets the data for the transaction
 func (t *Transaction) SetData(s string) {
+
+	t.determineCarrierCount()
+
 	bin := stringToBin(s)
 	binLength := len(bin)
 
@@ -68,12 +82,12 @@ func (t *Transaction) SetData(s string) {
 	frameSum := 0
 
 	for i, binaryBit := range bin {
-		carrierIndex := i % t.Carriers
+		carrierIndex := i % t.carrierCount
 		bit := int(binaryBit) - 48
 		frameData = append(frameData, bit)
 		frameSum += bit
 
-		if carrierIndex == (t.Carriers-1) || i == (binLength-1) {
+		if carrierIndex == (t.carrierCount-1) || i == (binLength-1) {
 			byteLength := len(frameData) / 8
 			byteOffset := len(t.Frames) * byteLength
 
@@ -94,41 +108,44 @@ func (t *Transaction) buildHeader() {
 }
 
 func (t Transaction) FrameGenerationOptions() *frame.GenerationOptions {
-	spacing := t.Bandwidth / t.Carriers
-
 	frameOptions := frame.GenerationOptions{}
 	frameOptions.Duration = int64(t.FrameDuration)
 	frameOptions.BaseFrequency = t.BaseFrequency
 	frameOptions.SampleRate = int64(t.Kilobitrate * 1000)
-	frameOptions.Spacing = spacing
-	frameOptions.CarrierCount = t.Carriers
+	frameOptions.CarrierCount = t.carrierCount
+	frameOptions.CarrierSpacing = t.carrierSpacing
 	frameOptions.NoiseLevel = t.NoiseLevel
 
 	return &frameOptions
 }
 
 func (t *Transaction) Wave() []float64 {
-	t.buildHeader()
+	if t.wave == nil {
+		t.buildHeader()
 
-	wave := []float64{}
+		wave := []float64{}
 
-	fmt.Println(float64(t.Carriers)*(1000.0/float64(t.FrameDuration)), "Bits/second")
+		fmt.Println(float64(t.carrierCount)*(1000.0/float64(t.FrameDuration)), "Bits/second")
+		fmt.Println(t.carrierCount, "Carriers")
 
-	numFrames := len(t.Frames)
+		numFrames := len(t.Frames)
 
-	waveIndex := int64(0)
+		waveIndex := int64(0)
 
-	frameOptions := t.FrameGenerationOptions()
+		frameOptions := t.FrameGenerationOptions()
 
-	for frameIndex := 0; frameIndex < numFrames; frameIndex++ {
-		frame := t.Frames[frameIndex]
-		waveIndex = frame.Generate(frameOptions, waveIndex)
-		wave = append(wave, frame.Wave...)
+		for frameIndex := 0; frameIndex < numFrames; frameIndex++ {
+			frame := t.Frames[frameIndex]
+			waveIndex = frame.Generate(frameOptions, waveIndex)
+			wave = append(wave, frame.Wave...)
+		}
+
+		fmt.Println(numFrames, "Frames")
+
+		t.wave = wave
 	}
 
-	fmt.Println(numFrames, "Frames")
-
-	return wave
+	return t.wave
 }
 
 // Build creates the audio for the transaction
