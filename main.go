@@ -22,12 +22,12 @@ func main() {
 
 	transaction := transaction.NewTransaction()
 
-	transaction.BaseFrequency = 2000
+	transaction.BaseFrequency = 1000
 	transaction.FrameDuration = 500
 	transaction.Kilobitrate = 96 * 2
 	transaction.Bandwidth = 1000
-	transaction.NoiseLevel = 0
-	transaction.OMFSKConstant = 2
+	transaction.NoiseLevel = 70
+	transaction.OMFSKConstant = 8
 
 	s := `Overview: Argentina, rich in natural resources, benefits also from a highly literate population, an export-oriented agricultural sector, and a diversified industrial base. Nevertheless, following decades of mismanagement and statist policies, the economy in the late 1980s was plagued with huge external debts and recurring bouts of hyperinflation. Elected in 1989, in the depths of recession, President MENEM has implemented a comprehensive economic restructuring program that shows signs of putting Argentina on a path of stable, sustainable growth. Argentina's currency has traded at par with the US dollar since April 1991, and inflation has fallen to its lowest level in 20 years. Argentines have responded to the relative price stability by repatriating flight capital and investing in domestic industry. The economy registered an impressive 6% advance in 1994, fueled largely by inflows of foreign capital and strong domestic consumption spending.`
 
@@ -97,12 +97,17 @@ func percentMatch(first string, second string) {
 
 	matchedBin := float64(0)
 
+	fmt.Print("\n\nBin Analysis:\n\n")
+
 	for i := range firstBin {
 		firstChar := firstBin[i]
 		secondChar := secondBin[i]
 
 		if firstChar == secondChar {
 			matchedBin++
+			fmt.Print(" ")
+		} else {
+			fmt.Print("!")
 		}
 	}
 

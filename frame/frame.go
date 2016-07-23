@@ -104,7 +104,7 @@ func (f *Frame) Generate(options *GenerationOptions, startIndex int64) int64 {
 		amplitude = (amplitude / float64(carrierCount))
 
 		noise := float64(0)
-		scaler := float64(32768.0)
+		scaler := float64(32767.0)
 
 		if options.NoiseLevel != 0 {
 			noiseAmplitude := (scaler / float64(100.0)) * float64(options.NoiseLevel)
