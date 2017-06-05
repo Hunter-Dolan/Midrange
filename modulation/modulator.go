@@ -43,7 +43,7 @@ func (m *Modulator) FullWave() []float64 {
 		sampleRate := int64(m.Options.Kilobitrate * 1000)
 		numberOfSamplesPerFrame := int64(float64(sampleRate) * (float64(m.Options.FrameDuration) / float64(1000.0)))
 
-		offsetSamples := int64(0) //numberOfSamplesPerFrame
+		offsetSamples := numberOfSamplesPerFrame
 		numberOfSamples := (numberOfSamplesPerFrame * numberOfFrames) + offsetSamples
 
 		fullWave := make([]float64, numberOfSamples)
@@ -72,7 +72,7 @@ func (m *Modulator) FullWave() []float64 {
 				carrierOffset := int64(0)
 
 				if offsetIndex != 0 {
-					//carrierOffset = int64(offsetSamples / offsetIndex)
+					carrierOffset = int64(offsetSamples / offsetIndex)
 				}
 
 				frequencyIndex := phase - carrierOffset

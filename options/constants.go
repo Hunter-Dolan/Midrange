@@ -19,6 +19,6 @@ const MaxCorrectionRoundsHashNotValidated = 12
 
 const BitDepth = 32
 
-const OffsetGroups = 2
+const OffsetGroups = 8
 
 const HeaderInterval = 2

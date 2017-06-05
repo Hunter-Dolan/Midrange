@@ -15,7 +15,7 @@ func main() {
 	options.FrameDuration = 500
 	options.Kilobitrate = 96 * 2
 	options.Bandwidth = 1000
-	options.NoiseLevel = 38
+	options.NoiseLevel = 0
 	options.OMFSKConstant = 2.2
 	options.NFFTPower = 17
 
