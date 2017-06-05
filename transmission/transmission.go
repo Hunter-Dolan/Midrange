@@ -29,3 +29,7 @@ func NewTransmission() *Transmission {
 func (t *Transmission) SetOptions(options options.Options) {
 	t.options = &options
 }
+
+func (t Transmission) CachedWave() []float64 {
+	return *t.modulator.CachedWave
+}

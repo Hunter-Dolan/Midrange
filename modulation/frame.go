@@ -15,6 +15,8 @@ type frame struct {
 
 	header bool
 
+	offset int
+
 	options *options.Options
 }
 
@@ -47,7 +49,7 @@ func (f frame) wave() *[]float64 {
 		}
 
 		noise := float64(0)
-		scaler := float64(32767.0)
+		scaler := float64(math.Pow(2, float64(options.BitDepth-1)))
 
 		if f.options.NoiseLevel != 0 {
 			noiseAmplitude := (scaler / float64(100.0)) * float64(f.options.NoiseLevel)
@@ -61,6 +63,22 @@ func (f frame) wave() *[]float64 {
 	}
 
 	return &wave
+}
+
+func (f frame) allCarriers() []float64 {
+	var carriers = []float64{}
+
+	for index, bit := range f.data {
+
+		if bit {
+			freq := float64(index)*f.carrierSpacing + float64(f.options.BaseFrequency)
+			carriers = append(carriers, freq)
+		} else {
+			carriers = append(carriers, -1.0)
+		}
+	}
+
+	return carriers
 }
 
 func (f frame) carriers() []float64 {

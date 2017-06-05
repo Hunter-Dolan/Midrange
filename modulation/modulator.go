@@ -3,6 +3,7 @@ package modulation
 import (
 	"fmt"
 	"math"
+	"math/rand"
 
 	"github.com/Hunter-Dolan/midrange/options"
 )
@@ -19,6 +20,8 @@ type Modulator struct {
 
 	frameCount int
 	frameIndex int
+
+	CachedWave *[]float64
 }
 
 func (m *Modulator) SetData(data *[]bool) {
@@ -34,24 +37,80 @@ func (m *Modulator) NextWave() *[]float64 {
 }
 
 func (m *Modulator) FullWave() []float64 {
+	if m.CachedWave == nil {
+		numberOfFrames := int64(m.FrameCount())
 
-	numberOfFrames := int64(m.FrameCount())
+		sampleRate := int64(m.Options.Kilobitrate * 1000)
+		numberOfSamplesPerFrame := int64(float64(sampleRate) * (float64(m.Options.FrameDuration) / float64(1000.0)))
 
-	sampleRate := int64(m.Options.Kilobitrate * 1000)
-	numberOfSamplesPerFrame := int64(float64(sampleRate) * (float64(m.Options.FrameDuration) / float64(1000.0)))
-	numberOfSamples := numberOfSamplesPerFrame * numberOfFrames
+		offsetSamples := int64(0) //numberOfSamplesPerFrame
+		numberOfSamples := (numberOfSamplesPerFrame * numberOfFrames) + offsetSamples
 
-	fullWave := make([]float64, numberOfSamples)
+		fullWave := make([]float64, numberOfSamples)
 
-	for waveIndex := int64(0); waveIndex < numberOfFrames; waveIndex++ {
-		wave := *m.NextWave()
+		carrierData := make([][]float64, m.carrierCount)
 
-		for i, amplitude := range wave {
-			fullWave[waveIndex*numberOfSamplesPerFrame+int64(i)] = amplitude
+		ts := 1 / float64(sampleRate)
+
+		for i := int(0); i < int(numberOfFrames); i++ {
+			frame := m.buildFrame(i)
+
+			for carrierIndex, freq := range frame.allCarriers() {
+				carrierData[carrierIndex] = append(carrierData[carrierIndex], freq)
+			}
 		}
+
+		scaler := float64(math.Pow(2, float64(options.BitDepth-2)))
+		signalScaler := scaler
+
+		for phase := int64(0); phase < numberOfSamples; phase++ {
+			amplitude := float64(0.0)
+			carrierCount := 0
+
+			for carrierIndex, frequencies := range carrierData {
+				offsetIndex := int64(carrierIndex % options.OffsetGroups)
+				carrierOffset := int64(0)
+
+				if offsetIndex != 0 {
+					//carrierOffset = int64(offsetSamples / offsetIndex)
+				}
+
+				frequencyIndex := phase - carrierOffset
+
+				if frequencyIndex >= 0 && frequencyIndex < (numberOfSamplesPerFrame*numberOfFrames) {
+					frameIndex := frequencyIndex / numberOfSamplesPerFrame
+					frequency := frequencies[frameIndex]
+
+					if frequency != -1.0 {
+						amplitude += (math.Sin(float64(phase) * ts * frequency * 2 * (math.Pi)))
+						carrierCount++
+					}
+				}
+			}
+
+			if carrierCount != 0 {
+				amplitude = amplitude / float64(carrierCount)
+			}
+
+			noise := float64(0)
+			scaler := float64(signalScaler)
+
+			if m.Options.NoiseLevel != 0 {
+				noiseAmplitude := (scaler / float64(100.0)) * float64(m.Options.NoiseLevel)
+
+				scaler = scaler - noiseAmplitude
+				noise = noiseAmplitude * rand.Float64()
+			}
+
+			fullWave[phase] = (amplitude * scaler) + noise
+		}
+
+		fmt.Println("wave generated")
+
+		m.CachedWave = &fullWave
 	}
 
-	return fullWave
+	return *m.CachedWave
 }
 
 func (m *Modulator) Reset() {
@@ -90,7 +149,7 @@ func (m *Modulator) buildHeaderFrame(frameIndex int) frame {
 }
 
 func (m Modulator) buildFrame(frameIndex int) frame {
-	if m.frameIndex <= 1 {
+	if frameIndex <= 1 {
 		return m.buildHeaderFrame(frameIndex)
 	}
 

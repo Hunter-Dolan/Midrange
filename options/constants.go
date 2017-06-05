@@ -14,5 +14,11 @@ const PacketDataLengthBytes = PacketDataLength / 8
 const HeaderLengthBits = HeaderTransmissionChecksumLength + HeaderDataLengthIntegerBitLength + (HeaderChecksumRedundancy * PacketChecksumLength)
 const HeaderLengthWithoutRedundancy = HeaderTransmissionChecksumLength + HeaderDataLengthIntegerBitLength
 
-const MaxCorrectionRoundsHashValidated = 20
-const MaxCorrectionRoundsHashNotValidated = 20
+const MaxCorrectionRoundsHashValidated = 12
+const MaxCorrectionRoundsHashNotValidated = 12
+
+const BitDepth = 32
+
+const OffsetGroups = 2
+
+const HeaderInterval = 2

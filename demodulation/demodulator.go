@@ -125,6 +125,8 @@ func (d *Demodulator) buildPackets() {
 	headerLength := d.header.Length()
 	packetCount := (d.confidenceCollection.Length() - headerLength) / options.PacketTotalLength
 
+	fmt.Println(packetCount, (d.confidenceCollection.Length() - headerLength))
+
 	d.packets = make([]*packet, packetCount)
 
 	for i := range d.packets {
@@ -138,6 +140,8 @@ func (d *Demodulator) buildPackets() {
 		if i == packetCount-1 {
 			dataLength = d.header.dataLength - (i * options.PacketDataLength)
 		}
+
+		fmt.Println(d.header.dataLength, i*options.PacketDataLength)
 
 		packet.data = packetTotalData.Slice(0, dataLength)
 

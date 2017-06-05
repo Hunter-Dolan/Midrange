@@ -2,8 +2,20 @@ package transmission
 
 import "github.com/Hunter-Dolan/midrange/demodulation"
 
-func (t *Transmission) SetWave(wave []float64) {
+func (t *Transmission) SetWave64(wave []float64) {
 	t.wave = &wave
+	t.demodulate()
+}
+
+func (t *Transmission) SetWave(wave []float32) {
+
+	float64Wave := make([]float64, len(wave))
+
+	for i, amp := range wave {
+		float64Wave[i] = float64(amp)
+	}
+
+	t.wave = &float64Wave
 	t.demodulate()
 }
 

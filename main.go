@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Hunter-Dolan/midrange/options"
 	"github.com/Hunter-Dolan/midrange/transmission"
+	"github.com/go-audio/aiff"
 )
 
 func main() {
@@ -13,8 +15,8 @@ func main() {
 	options.FrameDuration = 500
 	options.Kilobitrate = 96 * 2
 	options.Bandwidth = 1000
-	options.NoiseLevel = 20
-	options.OMFSKConstant = 2.5
+	options.NoiseLevel = 38
+	options.OMFSKConstant = 2.2
 	options.NFFTPower = 17
 
 	sentTransmission := transmission.NewTransmission()
@@ -46,16 +48,21 @@ your programs, too.
 
 	sentTransmission.SetData(data)
 
-	sentTransmission.BuildWav("tone.wav")
+	sentTransmission.BuildWav("tone.aiff")
 
-	signal := sentTransmission.Wave()
+	// open file
+	toneWav, _ := os.Open("tone.aiff")
+	wavReader := aiff.NewDecoder(toneWav)
+
+	buffer, _ := wavReader.FullPCMBuffer()
+
+	signal := buffer.AsFloatBuffer().Data
 
 	recievedTransmission := transmission.NewTransmission()
 	recievedTransmission.SetOptions(options)
-	sentTransmission.SetWave(signal)
+	recievedTransmission.SetWave64(signal)
 
-	fmt.Println(string(sentTransmission.Data()[:]))
+	fmt.Println(string(recievedTransmission.Data()[:]))
 
-	fmt.Println("Transfer successful: ", string(sentTransmission.Data()[:]) == data)
-
+	fmt.Println("Transfer successful: ", string(recievedTransmission.Data()[:]) == data)
 }

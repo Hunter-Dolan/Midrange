@@ -52,6 +52,7 @@ func (d *DataConfidenceCollection) CorrectData(hash *DataConfidenceCollection, h
 
 				if !localValid && !hashValidated {
 					// Next Attempt to flip hash bits as well
+
 					for _, hashBits := range bits {
 						hash.swapLeastConfidentBitsWithBits(hashBits)
 
@@ -100,20 +101,27 @@ func (data DataConfidenceCollection) verifyHash(hash *DataConfidenceCollection) 
 
 func (data *DataConfidenceCollection) swapLeastConfidentBitsWithBits(bits []bool) {
 	bitLength := len(bits)
+
 	swapIndexes := data.LeastConfidentBitIndexes(bitLength)
 
 	for bitIndex, dataIndex := range swapIndexes {
 		data.data[dataIndex] = bits[bitIndex]
 	}
-
 }
 
 func possibleBinarySlicesWithNumberOfBits(bitCount int) [][]bool {
 	sliceSize := int(math.Pow(2, float64(bitCount)))
+	offset := 0
+
+	if bitCount > 1 {
+		offset = int(math.Pow(2, float64(bitCount-1)))
+		sliceSize -= offset
+	}
+
 	possiblities := make([][]bool, sliceSize)
 
 	for i := range possiblities {
-		bin := strconv.FormatInt(int64(i), 2)
+		bin := strconv.FormatInt(int64(i+offset), 2)
 		bin = utils.LeftPad(bin, bitCount)
 
 		boolBin := make([]bool, bitCount)

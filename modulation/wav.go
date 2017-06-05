@@ -1,20 +1,26 @@
 package modulation
 
 import (
-	"bufio"
-	"encoding/binary"
 	"fmt"
-	"io"
+	"math"
+	"math/rand"
 	"os"
+
+	"github.com/Hunter-Dolan/midrange/options"
+	"github.com/go-audio/aiff"
+	"github.com/go-audio/audio"
 )
 
 func (m *Modulator) BuildWav(filename string) {
-
-	numberOfFrames := m.FrameCount()
+	randomNoiseStartDuration := 0 //(rand.Intn(5) + 2) * 1000
+	randomNoiseEndDuration := 0   //(rand.Intn(5) + 2) * 1000
 
 	rate := m.Options.Kilobitrate * 1000
-	bitDepth := 16
-	duration := numberOfFrames * m.Options.FrameDuration
+	bitDepth := options.BitDepth
+	//fmt.Println(randomNoiseStartDuration)
+
+	randomNoiseStartBits := rate * (randomNoiseStartDuration / 1000)
+	randomNoiseEndBits := rate * (randomNoiseEndDuration / 1000)
 
 	file, err := os.Create(filename)
 	if err != nil {
@@ -23,42 +29,42 @@ func (m *Modulator) BuildWav(filename string) {
 	}
 
 	defer file.Close()
-	w := bufio.NewWriter(file)
-	dataSize := rate * (duration / 1000) * (bitDepth / 8)
-	buildWavHeader(w, bitDepth, rate, dataSize)
 
-	for i := 0; i < numberOfFrames; i++ {
-		wave := *m.NextWave()
+	buffer := audio.IntBuffer{}
+	buffer.Format = &audio.Format{}
+	buffer.Format.NumChannels = 1
+	buffer.Format.SampleRate = rate
 
-		for _, amplitude := range wave {
-			binary.Write(w, binary.LittleEndian, int16(amplitude))
-		}
+	encoder := aiff.NewEncoder(file, buffer.Format.SampleRate, bitDepth, buffer.Format.NumChannels)
+
+	wave := m.FullWave()
+	buffer.Data = make([]int, len(wave)+randomNoiseStartBits+randomNoiseEndBits)
+
+	scaler := float64(math.Pow(2, float64(bitDepth-1)))
+
+	offset := 0
+
+	for i := 0; i < randomNoiseStartBits; i++ {
+		noiseAmplitude := (scaler / float64(100.0)) * float64(m.Options.NoiseLevel)
+		noise := noiseAmplitude * rand.Float64()
+
+		buffer.Data[offset] = int(noise)
+		offset++
 	}
 
-	w.Flush()
+	for _, amplitude := range wave {
+		buffer.Data[offset] = int(amplitude)
+		offset++
+	}
 
-}
+	for i := 0; i < randomNoiseEndBits; i++ {
+		noiseAmplitude := (scaler / float64(100.0)) * float64(m.Options.NoiseLevel)
+		noise := noiseAmplitude * rand.Float64()
 
-const riff = "RIFF"
-const wave = "WAVE"
-const _fmt = "fmt "
-const data = "data"
+		buffer.Data[offset] = int(noise)
+		offset++
+	}
 
-func buildWavHeader(buf io.Writer, bitDepth, sampleRate, dataSize int) {
-
-	buf.Write([]byte(riff))
-	binary.Write(buf, binary.LittleEndian, uint32(36+dataSize))
-	buf.Write([]byte(wave))
-	buf.Write([]byte(_fmt))
-	binary.Write(buf, binary.LittleEndian, uint32(16))
-	binary.Write(buf, binary.LittleEndian, uint16(1))
-	binary.Write(buf, binary.LittleEndian, uint16(1))
-	binary.Write(buf, binary.LittleEndian, uint32(sampleRate))
-
-	//ByteRate
-	binary.Write(buf, binary.LittleEndian, uint32(sampleRate*(bitDepth/8)))
-	binary.Write(buf, binary.LittleEndian, uint16((bitDepth / 8)))
-	binary.Write(buf, binary.LittleEndian, uint16(bitDepth))
-	buf.Write([]byte(data))
-	binary.Write(buf, binary.LittleEndian, uint32(dataSize))
+	encoder.Write(&buffer)
+	encoder.Close()
 }

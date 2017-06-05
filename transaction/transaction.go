@@ -1,12 +1,8 @@
 package transaction
 
 import (
-	"bufio"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
-	"os"
 
 	"github.com/Hunter-Dolan/midrange/frame"
 )
@@ -146,55 +142,4 @@ func (t *Transaction) Wave() []float64 {
 	}
 
 	return t.wave
-}
-
-// Build creates the audio for the transaction
-func (t *Transaction) Build() {
-	wave := t.Wave()
-
-	rate := t.Kilobitrate * 1000
-	bitDepth := 16
-	duration := len(t.Frames) * t.FrameDuration
-
-	file, err := os.Create("tone.wav")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	defer file.Close()
-	w := bufio.NewWriter(file)
-	dataSize := rate * (duration / 1000) * (bitDepth / 8)
-	buildWavHeader(w, bitDepth, rate, dataSize)
-
-	for _, amplitude := range wave {
-		binary.Write(w, binary.LittleEndian, int16(amplitude))
-	}
-
-	w.Flush()
-
-}
-
-const riff = "RIFF"
-const wave = "WAVE"
-const _fmt = "fmt "
-const data = "data"
-
-func buildWavHeader(buf io.Writer, bitDepth, sampleRate, dataSize int) {
-
-	buf.Write([]byte(riff))
-	binary.Write(buf, binary.LittleEndian, uint32(36+dataSize))
-	buf.Write([]byte(wave))
-	buf.Write([]byte(_fmt))
-	binary.Write(buf, binary.LittleEndian, uint32(16))
-	binary.Write(buf, binary.LittleEndian, uint16(1))
-	binary.Write(buf, binary.LittleEndian, uint16(1))
-	binary.Write(buf, binary.LittleEndian, uint32(sampleRate))
-
-	//ByteRate
-	binary.Write(buf, binary.LittleEndian, uint32(sampleRate*(bitDepth/8)))
-	binary.Write(buf, binary.LittleEndian, uint16((bitDepth / 8)))
-	binary.Write(buf, binary.LittleEndian, uint16(bitDepth))
-	buf.Write([]byte(data))
-	binary.Write(buf, binary.LittleEndian, uint32(dataSize))
 }
