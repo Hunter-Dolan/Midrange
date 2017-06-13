@@ -10,6 +10,7 @@ import (
 )
 
 func (d *DataConfidenceCollection) CorrectData(hash *DataConfidenceCollection, hashValidated bool) bool {
+
 	// Check to see if the data is valid
 	if d.verifyHash(hash) {
 		return true

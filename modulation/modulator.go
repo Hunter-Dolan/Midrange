@@ -44,7 +44,12 @@ func (m *Modulator) FullWave() []float64 {
 		numberOfSamplesPerFrame := int64(float64(sampleRate) * (float64(m.Options.FrameDuration) / float64(1000.0)))
 
 		offsetSamples := numberOfSamplesPerFrame
-		numberOfSamples := (numberOfSamplesPerFrame * numberOfFrames) + offsetSamples
+
+		numberOfSamples := (numberOfSamplesPerFrame * numberOfFrames)
+
+		if options.OffsetGroups != 1 {
+			numberOfSamples = (numberOfSamplesPerFrame * numberOfFrames) + offsetSamples
+		}
 
 		fullWave := make([]float64, numberOfSamples)
 
@@ -63,16 +68,24 @@ func (m *Modulator) FullWave() []float64 {
 		scaler := float64(math.Pow(2, float64(options.BitDepth-2)))
 		signalScaler := scaler
 
+		guard := int64(numberOfSamplesPerFrame - (numberOfSamplesPerFrame / options.GuardDivisor))
+
+		fmt.Println("Generating Phases")
+
 		for phase := int64(0); phase < numberOfSamples; phase++ {
 			amplitude := float64(0.0)
 			carrierCount := 0
+
+			if phase%10000 == 0 {
+				fmt.Println("Phase:", phase, int((float64(phase)/float64(numberOfSamples))*100.0), "%")
+			}
 
 			for carrierIndex, frequencies := range carrierData {
 				offsetIndex := int64(carrierIndex % options.OffsetGroups)
 				carrierOffset := int64(0)
 
 				if offsetIndex != 0 {
-					carrierOffset = int64(offsetSamples / offsetIndex)
+					carrierOffset = int64(int64(offsetSamples/(options.OffsetGroups)) * int64(offsetIndex))
 				}
 
 				frequencyIndex := phase - carrierOffset
@@ -81,7 +94,7 @@ func (m *Modulator) FullWave() []float64 {
 					frameIndex := frequencyIndex / numberOfSamplesPerFrame
 					frequency := frequencies[frameIndex]
 
-					if frequency != -1.0 {
+					if frequency != -1.0 && frequencyIndex < ((frameIndex+1)*numberOfSamplesPerFrame)-guard {
 						amplitude += (math.Sin(float64(phase) * ts * frequency * 2 * (math.Pi)))
 						carrierCount++
 					}
@@ -164,6 +177,7 @@ func (m Modulator) buildFrame(frameIndex int) frame {
 
 	f := frame{}
 	f.data = data
+	//fmt.Println(data)
 	f.carrierSpacing = m.carrierSpacing
 	f.frameIndex = frameIndex
 	f.options = m.Options

@@ -141,6 +141,8 @@ func (t *Transmission) modulate() {
 
 	fmt.Println(t.originalDataLength, "bits to transfer")
 	fmt.Println(duration, "second transfer time")
+
+	fmt.Println(int64(float64(t.dataLength)/duration), "bps real")
 	fmt.Println(int64(float64(t.originalDataLength)/duration), "bps effective")
 }
 

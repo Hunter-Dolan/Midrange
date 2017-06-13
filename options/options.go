@@ -8,7 +8,7 @@ type Options struct {
 
 	OMFSKConstant float64
 
-	NFFTPower int
+	NFFTPower float64
 
 	// Debug
 	NoiseLevel int

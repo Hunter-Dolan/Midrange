@@ -1,6 +1,8 @@
 package demodulation
 
-import "github.com/Hunter-Dolan/midrange/fec"
+import (
+	"github.com/Hunter-Dolan/midrange/fec"
+)
 
 type frame struct {
 	index                int
@@ -19,5 +21,7 @@ func (f *frame) demodulate() {
 		value, confidence := trainer.determineValueAndConfidence(power, carrierIndex)
 		f.confidenceCollection.Add(value, confidence)
 	}
+
+	//fmt.Println(f.confidenceCollection.Data())
 
 }

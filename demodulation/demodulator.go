@@ -77,8 +77,11 @@ func (d *Demodulator) demodulateFrames() {
 
 	numberOfFrames := int(math.Floor(float64(d.waveLength/numberOfSamplesPerFrame))) - 2
 
-	d.frames = make([]*frame, numberOfFrames)
+	if options.OffsetGroups != 1 {
+		numberOfFrames = numberOfFrames - 1
+	}
 
+	d.frames = make([]*frame, numberOfFrames)
 	d.confidenceCollection = fec.DataConfidenceCollection{}
 
 	for index := range d.frames {
@@ -123,9 +126,9 @@ func (d *Demodulator) buildPackets() {
 	fmt.Println("Decoding Packets")
 
 	headerLength := d.header.Length()
-	packetCount := (d.confidenceCollection.Length() - headerLength) / options.PacketTotalLength
+	packetCount := (d.header.dataLength / options.PacketDataLength) + 1
 
-	fmt.Println(packetCount, (d.confidenceCollection.Length() - headerLength))
+	fmt.Println(packetCount, options.PacketTotalLength, (d.confidenceCollection.Length() - headerLength))
 
 	d.packets = make([]*packet, packetCount)
 
@@ -139,9 +142,12 @@ func (d *Demodulator) buildPackets() {
 
 		if i == packetCount-1 {
 			dataLength = d.header.dataLength - (i * options.PacketDataLength)
-		}
 
-		fmt.Println(d.header.dataLength, i*options.PacketDataLength)
+			fmt.Println(packetTotalData.Length(), dataLength)
+			fmt.Println(d.header.dataLength, i*options.PacketDataLength)
+			fmt.Println("__")
+
+		}
 
 		packet.data = packetTotalData.Slice(0, dataLength)
 

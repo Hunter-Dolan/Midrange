@@ -27,6 +27,11 @@ func (t *Transmission) demodulate() {
 	if t.demodulator == nil {
 		t.demodulator = &demodulation.Demodulator{}
 		t.demodulator.Options = t.options
-		t.demodulator.SetWave(t.wave)
+
+		start := 0
+		end := len(*t.wave)
+
+		wave := (*t.wave)[start:end]
+		t.demodulator.SetWave(&wave)
 	}
 }
